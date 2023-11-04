@@ -27,16 +27,6 @@ from typing import Any, Callable
 from pydantic import BaseModel, create_model, validate_arguments
 
 
-def _remove_a_key(d, remove_key) -> None:
-    """Remove a key from a dictionary recursively"""
-    if isinstance(d, dict):
-        for key in list(d.keys()):
-            if key == remove_key and "type" in d.keys():
-                del d[key]
-            else:
-                _remove_a_key(d[key], remove_key)
-
-
 class openai_function:
     """
     Decorator to convert a function into an OpenAI function.
@@ -80,10 +70,8 @@ class openai_function:
             ):
                 parameters["properties"][name]["description"] = description
         parameters["required"] = sorted(
-            k for k, v in parameters["properties"].items() if not "default" in v
+            k for k, v in parameters["properties"].items() if "default" not in v
         )
-        _remove_a_key(parameters, "additionalProperties")
-        _remove_a_key(parameters, "title")
         self.openai_schema = {
             "name": self.func.__name__,
             "description": self.docstring.short_description,
@@ -98,7 +86,7 @@ class openai_function:
 
         return wrapper(*args, **kwargs)
 
-    def from_response(self, completion, throw_error=True):
+    def from_response(self, completion, throw_error=True, strict: bool = None):
         """
         Parse the response from OpenAI's API and return the function call
 
@@ -118,7 +106,7 @@ class openai_function:
             ), "Function name does not match"
 
         function_call = message["function_call"]
-        arguments = json.loads(function_call["arguments"], strict=False)
+        arguments = json.loads(function_call["arguments"], strict=strict)
         return self.validate_func(**arguments)
 
 
@@ -188,7 +176,7 @@ class OpenAISchema(BaseModel):
                     parameters["properties"][name]["description"] = description
 
         parameters["required"] = sorted(
-            k for k, v in parameters["properties"].items() if not "default" in v
+            k for k, v in parameters["properties"].items() if "default" not in v
         )
 
         if "description" not in schema:
@@ -200,8 +188,6 @@ class OpenAISchema(BaseModel):
                     f"the required parameters with correct types"
                 )
 
-        _remove_a_key(parameters, "title")
-        _remove_a_key(parameters, "additionalProperties")
         return {
             "name": schema["title"],
             "description": schema["description"],
@@ -209,13 +195,20 @@ class OpenAISchema(BaseModel):
         }
 
     @classmethod
-    def from_response(cls, completion, throw_error=True, validation_context=None):
+    def from_response(
+        cls,
+        completion,
+        throw_error: bool = True,
+        validation_context=None,
+        strict: bool = None,
+    ):
         """Execute the function from the response of an openai chat completion
 
         Parameters:
             completion (openai.ChatCompletion): The response from an openai chat completion
             throw_error (bool): Whether to throw an error if the function call is not detected
             validation_context (dict): The validation context to use for validating the response
+            strict (bool): Whether to use strict json parsing
 
         Returns:
             cls (OpenAISchema): An instance of the class
@@ -229,7 +222,9 @@ class OpenAISchema(BaseModel):
             ), "Function name does not match"
 
         return cls.model_validate_json(
-            message["function_call"]["arguments"], context=validation_context
+            message["function_call"]["arguments"],
+            context=validation_context,
+            strict=strict,
         )
 
 

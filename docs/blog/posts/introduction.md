@@ -3,6 +3,8 @@ draft: False
 date: 2023-09-11
 tags:
   - Introduction
+authors:
+  - jxnl
 ---
 
 # Bridging Language Models with Python using Instructor, Pydantic, and OpenAI's Function Calls
@@ -176,3 +178,5 @@ class MaybeUser(BaseModel):
 ## Conclusion
 
 Instructor, with Pydantic, simplifies interaction with language models. It is usable for both experienced and new developers.
+
+If you enjoy the content or want to try out `instructor` please check out the [github](https://github.com/jxnl/instructor) and give us a star!
